@@ -6,11 +6,10 @@ import (
 	"time"
 	"database/sql"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/cenkalti/backoff/v4"
 	gosql "github.com/gjbae1212/go-sql"
-	"github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/mysql"
 	"github.com/luna-duclos/instrumentedsql"
 	"github.com/luna-duclos/instrumentedsql/opentracing"
 )
