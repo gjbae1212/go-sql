@@ -9,7 +9,8 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	gosql "github.com/gjbae1212/go-sql"
 	"github.com/go-sql-driver/mysql"
-	"github.com/jmoiron/sqlx"
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/mysql"
 	"github.com/luna-duclos/instrumentedsql"
 	"github.com/luna-duclos/instrumentedsql/opentracing"
 )
@@ -17,13 +18,13 @@ import (
 // Connector is connector for mysql.
 type Connector interface {
 	gosql.Connector
-	DB() (*sqlx.DB, error)
+	DB() (*gorm.DB, error)
 }
 
 type conn struct {
 	driverName string
 	dsn        string
-	db         *sqlx.DB
+	db         *gorm.DB
 	tries      int
 	backoff    *backoff.ExponentialBackOff
 	lock       sync.RWMutex
@@ -70,8 +71,8 @@ func (c *conn) DSN() string {
 	return c.dsn
 }
 
-// DB returns sqlx.DB object if db was connected successfully.
-func (c *conn) DB() (*sqlx.DB, error) {
+// DB returns *gorm.DB object if db was connected successfully.
+func (c *conn) DB() (*gorm.DB, error) {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
@@ -97,7 +98,7 @@ func (c *conn) Connect() error {
 	defer c.backoff.Reset()
 	for i := 0; i < c.tries; i++ {
 		time.Sleep(c.backoff.NextBackOff())
-		db, err := sqlx.Connect(c.driverName, c.dsn)
+		db, err := gorm.Open(c.driverName, c.dsn)
 		if err != nil {
 			continue
 		}

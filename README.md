@@ -28,14 +28,11 @@ func main() {
 		panic(err)
 	}
 
-	// db is *sqlx.DB(https://github.com/jmoiron/sqlx)
+	// db is *gorm.DB(https://github.com/jinzhu/gorm)
 	db, err := conn.DB()
 	if err != nil {
 		panic(err)
-	}
-
-	_, _ = db.Query("SELECT * FROM sample")
-	_, _ = db.Queryx("SELECT * FROM sample")
+	}	
 }
 ```
 
