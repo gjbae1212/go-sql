@@ -7,7 +7,6 @@
 This project is a db connector for SQL databases. And so support to trace context like opentracing.
 In this time, mysql is to support only. Continuously expect to support databases like Sqlite, BigQuery, and so on.
  
->>>>>>> Stashed changes
 ## Getting Started
 ### Mysql
 ```go
