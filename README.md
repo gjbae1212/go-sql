@@ -4,8 +4,10 @@
 <a href="https://goreportcard.com/badge/github.com/gjbae1212/go-sql"><img src="https://goreportcard.com/badge/github.com/gjbae1212/go-sql" alt="Go Report Card"/></a>
 <a href="/LICENSE"><img src="https://img.shields.io/badge/license-MIT-GREEN.svg" alt="license" /></a> 
 </p>
-This project is a db connector for SQL databases.
-
+This project is a db connector for SQL databases. And so support to trace context like opentracing.
+In this time, mysql is to support only. Continuously expect to support databases like Sqlite, BigQuery, and so on.
+ 
+>>>>>>> Stashed changes
 ## Getting Started
 ### Mysql
 ```go
@@ -16,6 +18,7 @@ import (
 )
 
 func main() {
+    // conn, err := gomysql.NewConnectorWithOpentracing("user:password@/dbname", 2)
 	conn, err := gomysql.NewConnector("user:password@/dbname", 2)
 	if err != nil {
 		panic(err)

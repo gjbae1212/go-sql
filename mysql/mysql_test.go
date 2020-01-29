@@ -26,6 +26,24 @@ func TestNewConnector(t *testing.T) {
 	}
 }
 
+func TestNewConnectorWithOpentracing(t *testing.T) {
+	assert := assert.New(t)
+
+	tests := map[string]struct {
+		dns   string
+		tries int
+		isErr bool
+	}{
+		"fail":    {isErr: true},
+		"success": {dns: "test", tries: 1},
+	}
+
+	for _, t := range tests {
+		_, err := NewConnectorWithOpentracing(t.dns, t.tries)
+		assert.Equal(t.isErr, err != nil)
+	}
+}
+
 func TestConn_DSN(t *testing.T) {
 	assert := assert.New(t)
 

@@ -4,11 +4,14 @@ import (
 	"fmt"
 	"sync"
 	"time"
+	"database/sql"
 
 	"github.com/cenkalti/backoff/v4"
 	gosql "github.com/gjbae1212/go-sql"
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	"github.com/luna-duclos/instrumentedsql"
+	"github.com/luna-duclos/instrumentedsql/opentracing"
 )
 
 // Connector is connector for mysql.
@@ -18,23 +21,45 @@ type Connector interface {
 }
 
 type conn struct {
-	dsn     string
-	db      *sqlx.DB
-	tries   int
-	backoff *backoff.ExponentialBackOff
-	lock    sync.RWMutex
+	driverName string
+	dsn        string
+	db         *sqlx.DB
+	tries      int
+	backoff    *backoff.ExponentialBackOff
+	lock       sync.RWMutex
 }
 
-// NewConnector returns the mysql-connector which implemented gosql-connector interface.
+// NewConnector returns the mysql-connector.
 func NewConnector(dsn string, tries int) (Connector, error) {
 	if dsn == "" || tries <= 0 {
 		return nil, fmt.Errorf("%w mysql.NewConnector", gosql.ErrInvalidParam)
 	}
 
 	c := &conn{
-		dsn:     dsn,
-		tries:   tries,
-		backoff: backoff.NewExponentialBackOff(),
+		driverName: "mysql",
+		dsn:        dsn,
+		tries:      tries,
+		backoff:    backoff.NewExponentialBackOff(),
+	}
+
+	return c, nil
+}
+
+// NewConnectorWithOpentracing returns the mysql-connector hooked opentracing.
+func NewConnectorWithOpentracing(dsn string, tries int) (Connector, error) {
+	if dsn == "" || tries <= 0 {
+		return nil, fmt.Errorf("%w mysql.NewConnectorWithOpentracing", gosql.ErrInvalidParam)
+	}
+
+	driverName := "mysql-opentracing"
+	sql.Register(driverName, instrumentedsql.WrapDriver(
+		&mysql.MySQLDriver{}, instrumentedsql.WithTracer(opentracing.NewTracer(true))))
+
+	c := &conn{
+		driverName: driverName,
+		dsn:        dsn,
+		tries:      tries,
+		backoff:    backoff.NewExponentialBackOff(),
 	}
 
 	return c, nil
@@ -72,7 +97,7 @@ func (c *conn) Connect() error {
 	defer c.backoff.Reset()
 	for i := 0; i < c.tries; i++ {
 		time.Sleep(c.backoff.NextBackOff())
-		db, err := sqlx.Connect("mysql", c.dsn)
+		db, err := sqlx.Connect(c.driverName, c.dsn)
 		if err != nil {
 			continue
 		}
