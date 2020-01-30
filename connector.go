@@ -1,6 +1,7 @@
 package gosql
 
 import (
+	"database/sql"
 	"fmt"
 )
 
@@ -14,6 +15,8 @@ var (
 // This interface is to support methods like connect, close and so on.
 type Connector interface {
 	DSN() string
+	DriverName() string
+	DB() (*sql.DB, error)
 	Connect() error
 	Close()
 }

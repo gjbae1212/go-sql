@@ -6,24 +6,27 @@ import (
 	"time"
 	"database/sql"
 
-	"github.com/go-sql-driver/mysql"
 	"github.com/cenkalti/backoff/v4"
 	gosql "github.com/gjbae1212/go-sql"
-	"github.com/jinzhu/gorm"
+	"github.com/go-sql-driver/mysql"
 	"github.com/luna-duclos/instrumentedsql"
 	"github.com/luna-duclos/instrumentedsql/opentracing"
+)
+
+const (
+	defaultDriver     = "mysql"
+	opentracingDriver = "mysql-opentracing"
 )
 
 // Connector is connector for mysql.
 type Connector interface {
 	gosql.Connector
-	DB() (*gorm.DB, error)
 }
 
 type conn struct {
 	driverName string
 	dsn        string
-	db         *gorm.DB
+	db         *sql.DB
 	tries      int
 	backoff    *backoff.ExponentialBackOff
 	lock       sync.RWMutex
@@ -34,14 +37,12 @@ func NewConnector(dsn string, tries int) (Connector, error) {
 	if dsn == "" || tries <= 0 {
 		return nil, fmt.Errorf("%w mysql.NewConnector", gosql.ErrInvalidParam)
 	}
-
 	c := &conn{
-		driverName: "mysql",
+		driverName: defaultDriver,
 		dsn:        dsn,
 		tries:      tries,
 		backoff:    backoff.NewExponentialBackOff(),
 	}
-
 	return c, nil
 }
 
@@ -51,12 +52,8 @@ func NewConnectorWithOpentracing(dsn string, tries int) (Connector, error) {
 		return nil, fmt.Errorf("%w mysql.NewConnectorWithOpentracing", gosql.ErrInvalidParam)
 	}
 
-	driverName := "mysql-opentracing"
-	sql.Register(driverName, instrumentedsql.WrapDriver(
-		&mysql.MySQLDriver{}, instrumentedsql.WithTracer(opentracing.NewTracer(true))))
-
 	c := &conn{
-		driverName: driverName,
+		driverName: opentracingDriver,
 		dsn:        dsn,
 		tries:      tries,
 		backoff:    backoff.NewExponentialBackOff(),
@@ -65,13 +62,18 @@ func NewConnectorWithOpentracing(dsn string, tries int) (Connector, error) {
 	return c, nil
 }
 
+// DriverName returns driver name.
+func (c *conn) DriverName() string {
+	return c.driverName
+}
+
 // DSN returns dns string.
 func (c *conn) DSN() string {
 	return c.dsn
 }
 
 // DB returns *gorm.DB object if db was connected successfully.
-func (c *conn) DB() (*gorm.DB, error) {
+func (c *conn) DB() (*sql.DB, error) {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
@@ -97,7 +99,7 @@ func (c *conn) Connect() error {
 	defer c.backoff.Reset()
 	for i := 0; i < c.tries; i++ {
 		time.Sleep(c.backoff.NextBackOff())
-		db, err := gorm.Open(c.driverName, c.dsn)
+		db, err := sql.Open(c.driverName, c.dsn)
 		if err != nil {
 			continue
 		}
@@ -116,4 +118,9 @@ func (c *conn) Close() {
 		c.db.Close()
 		c.db = nil
 	}
+}
+
+func init() {
+	sql.Register(opentracingDriver, instrumentedsql.WrapDriver(
+		&mysql.MySQLDriver{}, instrumentedsql.WithTracer(opentracing.NewTracer(true))))
 }

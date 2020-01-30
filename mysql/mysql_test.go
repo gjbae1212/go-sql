@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	gosql "github.com/gjbae1212/go-sql"
 	"github.com/stretchr/testify/assert"
 )
@@ -44,6 +45,24 @@ func TestNewConnectorWithOpentracing(t *testing.T) {
 	}
 }
 
+func TestConn_DriverName(t *testing.T) {
+	assert := assert.New(t)
+
+	conn1, _ := NewConnector("allan-test", 1)
+	conn2, _ := NewConnectorWithOpentracing("allan-test", 1)
+	tests := map[string]struct {
+		conn   Connector
+		output string
+	}{
+		"default":     {conn: conn1, output: defaultDriver},
+		"opentracing": {conn: conn2, output: opentracingDriver},
+	}
+
+	for _, t := range tests {
+		assert.Equal(t.output, t.conn.DriverName())
+	}
+}
+
 func TestConn_DSN(t *testing.T) {
 	assert := assert.New(t)
 
@@ -56,26 +75,34 @@ func TestConn_DSN(t *testing.T) {
 	}
 
 	for _, t := range tests {
-		assert.Equal(t.output, conn.DSN())
+		assert.Equal(t.output, t.conn.DSN())
 	}
 }
 
 func TestConn_DB(t *testing.T) {
 	assert := assert.New(t)
 
-	conn, _ := NewConnector("allan-test", 1)
+	conn1, _ := NewConnector("allan-test", 1)
+	conn2, _ := NewConnector("allan-test", 1)
+	db, _, _ := sqlmock.New()
+	conn2.(*conn).db = db
+
 	tests := map[string]struct {
 		conn Connector
 		err  error
 	}{
 		"fail": {
-			conn: conn,
+			conn: conn1,
 			err:  gosql.ErrNotExistDB,
+		},
+		"success": {
+			conn: conn2,
+			err:  nil,
 		},
 	}
 
 	for _, t := range tests {
-		_, err := conn.DB()
+		_, err := t.conn.DB()
 		assert.True(errors.Is(err, t.err))
 	}
 }
@@ -92,7 +119,7 @@ func TestConn_Connect(t *testing.T) {
 	}
 
 	for _, t := range tests {
-		err := conn.Connect()
+		err := t.conn.Connect()
 		assert.True(errors.Is(err, t.output))
 	}
 }
