@@ -27,8 +27,7 @@ func main() {
 	if err := conn.Connect(); err != nil {
 		panic(err)
 	}
-
-	// db is *gorm.DB(https://github.com/jinzhu/gorm)
+	
 	db, err := conn.DB()
 	if err != nil {
 		panic(err)
